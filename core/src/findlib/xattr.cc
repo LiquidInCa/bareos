@@ -68,40 +68,40 @@ static std::string error_message_disabling_xattributes
 /**
  * Entry points when compiled without support for XATTRs or on an unsupported platform.
  */
-bxattr_exit_code BuildXattrStreams(JobControlRecord *jcr,
+BxattrExitCode BuildXattrStreams(JobControlRecord *jcr,
                                      xattr_data_t *xattr_data,
                                      FindFilesPacket *ff_pkt)
 {
-   return bxattr_exit_fatal;
+   return BxattrExitCode::bxattr_exit_fatal;
 }
 
-bxattr_exit_code ParseXattrStreams(JobControlRecord *jcr,
+BxattrExitCode ParseXattrStreams(JobControlRecord *jcr,
                                      xattr_data_t *xattr_data,
                                      int stream,
                                      char *content,
                                      uint32_t content_length)
 {
-   return bxattr_exit_fatal;
+   return BxattrExitCode::bxattr_exit_fatal;
 }
 #else
 /**
  * Send a XATTR stream to the SD.
  */
-bxattr_exit_code SendXattrStream(JobControlRecord *jcr,
+BxattrExitCode SendXattrStream(JobControlRecord *jcr,
                                    xattr_data_t *xattr_data,
                                    int stream)
 {
    BareosSocket *sd = jcr->store_bsock;
    POOLMEM *msgsave;
 #ifdef FD_NO_SEND_TEST
-   return bxattr_exit_ok;
+   return BxattrExitCode::bxattr_exit_ok;
 #endif
 
    /*
     * Sanity check
     */
    if (xattr_data->u.build->content_length <= 0) {
-      return bxattr_exit_ok;
+      return BxattrExitCode::bxattr_exit_ok;
    }
 
    /*
@@ -110,7 +110,7 @@ bxattr_exit_code SendXattrStream(JobControlRecord *jcr,
    if (!sd->fsend("%ld %d 0", jcr->JobFiles, stream)) {
       Jmsg1(jcr, M_FATAL, 0, _("Network send error to SD. ERR=%s\n"),
             sd->bstrerror());
-      return bxattr_exit_fatal;
+      return BxattrExitCode::bxattr_exit_fatal;
    }
 
    /*
@@ -125,7 +125,7 @@ bxattr_exit_code SendXattrStream(JobControlRecord *jcr,
       sd->message_length = 0;
       Jmsg1(jcr, M_FATAL, 0, _("Network send error to SD. ERR=%s\n"),
             sd->bstrerror());
-      return bxattr_exit_fatal;
+      return BxattrExitCode::bxattr_exit_fatal;
    }
 
    jcr->JobBytes += sd->message_length;
@@ -133,10 +133,10 @@ bxattr_exit_code SendXattrStream(JobControlRecord *jcr,
    if (!sd->signal(BNET_EOD)) {
       Jmsg1(jcr, M_FATAL, 0, _("Network send error to SD. ERR=%s\n"),
             sd->bstrerror());
-      return bxattr_exit_fatal;
+      return BxattrExitCode::bxattr_exit_fatal;
    }
    Dmsg1(200, "XATTR of file: %s successfully backed up!\n", xattr_data->last_fname);
-   return bxattr_exit_ok;
+   return BxattrExitCode::bxattr_exit_ok;
 }
 
 /**
@@ -232,7 +232,7 @@ uint32_t SerializeXattrStream(JobControlRecord *jcr,
    return xattr_data->u.build->content_length;
 }
 
-bxattr_exit_code UnSerializeXattrStream(JobControlRecord *jcr,
+BxattrExitCode UnSerializeXattrStream(JobControlRecord *jcr,
                                           xattr_data_t *xattr_data,
                                           char *content,
                                           uint32_t content_length,
@@ -262,7 +262,7 @@ bxattr_exit_code UnSerializeXattrStream(JobControlRecord *jcr,
          Dmsg1(100, "Illegal xattr stream, no XATTR_MAGIC on file \"%s\"\n",
                xattr_data->last_fname);
          free(current_xattr);
-         return bxattr_exit_error;
+         return BxattrExitCode::bxattr_exit_error;
       }
 
       /*
@@ -276,7 +276,7 @@ bxattr_exit_code UnSerializeXattrStream(JobControlRecord *jcr,
          Dmsg1(100, "Illegal xattr stream, xattr name length <= 0 on file \"%s\"\n",
                xattr_data->last_fname);
          free(current_xattr);
-         return bxattr_exit_error;
+         return BxattrExitCode::bxattr_exit_error;
       }
 
       /*
@@ -313,7 +313,7 @@ bxattr_exit_code UnSerializeXattrStream(JobControlRecord *jcr,
    }
 
    UnserEnd(content, content_length);
-   return bxattr_exit_ok;
+   return BxattrExitCode::bxattr_exit_ok;
 }
 
 /**
@@ -353,7 +353,7 @@ static int os_default_xattr_streams[1] = {
 #define llistea listea
 #endif
 
-static bxattr_exit_code aix_build_xattr_streams(JobControlRecord *jcr,
+static BxattrExitCode aix_build_xattr_streams(JobControlRecord *jcr,
                                                 xattr_data_t *xattr_data,
                                                 FindFilesPacket *ff_pkt)
 {
@@ -367,7 +367,7 @@ static bxattr_exit_code aix_build_xattr_streams(JobControlRecord *jcr,
    uint32_t expected_serialize_len = 0;
    xattr_t *current_xattr;
    alist *xattr_value_list = NULL;
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 
    /*
     * First get the length of the available list with extended attributes.
@@ -380,7 +380,7 @@ static bxattr_exit_code aix_build_xattr_streams(JobControlRecord *jcr,
       switch (errno) {
       case ENOENT:
       case EFORMAT:
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          goto bail_out;
       case ENOTSUP:
          /*
@@ -390,7 +390,7 @@ static bxattr_exit_code aix_build_xattr_streams(JobControlRecord *jcr,
           * when we change from one filesystem to another.
           */
          xattr_data->flags &= ~BXATTR_FLAG_SAVE_NATIVE;
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          Mmsg1(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          Dmsg1(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          goto bail_out;
@@ -405,7 +405,7 @@ static bxattr_exit_code aix_build_xattr_streams(JobControlRecord *jcr,
       break;
    }
    case 0:
-      retval = bxattr_exit_ok;
+      retval = BxattrExitCode::bxattr_exit_ok;
       goto bail_out;
    default:
       break;
@@ -428,7 +428,7 @@ static bxattr_exit_code aix_build_xattr_streams(JobControlRecord *jcr,
       switch (errno) {
       case ENOENT:
       case EFORMAT:
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          goto bail_out;
       default:
          Mmsg2(jcr->errmsg,
@@ -478,7 +478,7 @@ static bxattr_exit_code aix_build_xattr_streams(JobControlRecord *jcr,
          switch (errno) {
          case ENOENT:
          case EFORMAT:
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             goto bail_out;
          default:
             Mmsg2(jcr->errmsg,
@@ -531,7 +531,7 @@ static bxattr_exit_code aix_build_xattr_streams(JobControlRecord *jcr,
             switch (errno) {
             case ENOENT:
             case EFORMAT:
-               retval = bxattr_exit_ok;
+               retval = BxattrExitCode::bxattr_exit_ok;
                break;
             default:
                Mmsg2(jcr->errmsg,
@@ -605,7 +605,7 @@ static bxattr_exit_code aix_build_xattr_streams(JobControlRecord *jcr,
        */
       retval = SendXattrStream(jcr, xattr_data, os_default_xattr_streams[0]);
    } else {
-      retval = bxattr_exit_ok;
+      retval = BxattrExitCode::bxattr_exit_ok;
    }
 
 bail_out:
@@ -619,7 +619,7 @@ bail_out:
    return retval;
 }
 
-static bxattr_exit_code aix_parse_xattr_streams(JobControlRecord *jcr,
+static BxattrExitCode aix_parse_xattr_streams(JobControlRecord *jcr,
                                                 xattr_data_t *xattr_data,
                                                 int stream,
                                                 char *content,
@@ -627,7 +627,7 @@ static bxattr_exit_code aix_parse_xattr_streams(JobControlRecord *jcr,
 {
    xattr_t *current_xattr;
    alist *xattr_value_list;
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 
    xattr_value_list = New(alist(10, not_owned_by_alist));
 
@@ -635,7 +635,7 @@ static bxattr_exit_code aix_parse_xattr_streams(JobControlRecord *jcr,
 			        xattr_data,
                                 content,
                                 content_length,
-                                xattr_value_list) != bxattr_exit_ok) {
+                                xattr_value_list) != BxattrExitCode::bxattr_exit_ok) {
       goto bail_out;
    }
 
@@ -659,7 +659,7 @@ static bxattr_exit_code aix_parse_xattr_streams(JobControlRecord *jcr,
              * change from one filesystem to another.
              */
             xattr_data->flags &= ~BXATTR_FLAG_RESTORE_NATIVE;
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             Mmsg1(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
             Dmsg1(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
             goto bail_out;
@@ -674,7 +674,7 @@ static bxattr_exit_code aix_parse_xattr_streams(JobControlRecord *jcr,
       }
    }
 
-   retval = bxattr_exit_ok;
+   retval = BxattrExitCode::bxattr_exit_ok;
 
 bail_out:
    XattrDropInternalTable(xattr_value_list);
@@ -685,10 +685,10 @@ bail_out:
 /**
  * Function pointers to the build and parse function to use for these xattrs.
  */
-static bxattr_exit_code (*os_build_xattr_streams)
+static BxattrExitCode (*os_build_xattr_streams)
                         (JobControlRecord *jcr, xattr_data_t *xattr_data, FindFilesPacket *ff_pkt) =
                         aix_build_xattr_streams;
-static bxattr_exit_code (*os_parse_xattr_streams)
+static BxattrExitCode (*os_parse_xattr_streams)
                         (JobControlRecord *jcr, xattr_data_t *xattr_data,
                          int stream, char *content, uint32_t content_length) =
                         aix_parse_xattr_streams;
@@ -728,7 +728,7 @@ static xattr_naming_space xattr_naming_spaces[] = {
    }
 };
 
-static bxattr_exit_code irix_build_xattr_streams(JobControlRecord *jcr,
+static BxattrExitCode irix_build_xattr_streams(JobControlRecord *jcr,
                                                  xattr_data_t *xattr_data,
                                                  FindFilesPacket *ff_pkt)
 {
@@ -740,7 +740,7 @@ static bxattr_exit_code irix_build_xattr_streams(JobControlRecord *jcr,
    xattr_t *current_xattr;
    alist *xattr_value_list = NULL;
    uint32_t expected_serialize_len = 0;
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
    POOLMEM *xattrbuf = GetMemory(ATTR_MAX_VALUELEN);
 
    for (cnt = 0; xattr_naming_spaces[cnt].name != NULL; cnt++) {
@@ -752,7 +752,7 @@ static bxattr_exit_code irix_build_xattr_streams(JobControlRecord *jcr,
 
             switch (errno) {
             case ENOENT:
-               retval = bxattr_exit_ok;
+               retval = BxattrExitCode::bxattr_exit_ok;
                goto bail_out;
             default:
                Mmsg2(jcr->errmsg,
@@ -783,7 +783,7 @@ static bxattr_exit_code irix_build_xattr_streams(JobControlRecord *jcr,
                switch (errno) {
                case ENOENT:
                case ENOATTR:
-                  retval = bxattr_exit_ok;
+                  retval = BxattrExitCode::bxattr_exit_ok;
                   goto bail_out;
                case E2BIG:
                   /*
@@ -835,7 +835,7 @@ static bxattr_exit_code irix_build_xattr_streams(JobControlRecord *jcr,
                switch (errno) {
                case ENOENT:
                case ENOATTR:
-                  retval = bxattr_exit_ok;
+                  retval = BxattrExitCode::bxattr_exit_ok;
                   break;
                case E2BIG:
                   /*
@@ -853,7 +853,7 @@ static bxattr_exit_code irix_build_xattr_streams(JobControlRecord *jcr,
                      switch (errno) {
                      case ENOENT:
                      case ENOATTR:
-                        retval = bxattr_exit_ok;
+                        retval = BxattrExitCode::bxattr_exit_ok;
                         break;
                      default:
                         Mmsg2(jcr->errmsg,
@@ -941,7 +941,7 @@ ok_continue:
        */
       retval = SendXattrStream(jcr, xattr_data, os_default_xattr_streams[0]);
    } else {
-      retval = bxattr_exit_ok;
+      retval = BxattrExitCode::bxattr_exit_ok;
    }
 
 bail_out:
@@ -954,7 +954,7 @@ bail_out:
    return retval;
 }
 
-static bxattr_exit_code irix_parse_xattr_streams(JobControlRecord *jcr,
+static BxattrExitCode irix_parse_xattr_streams(JobControlRecord *jcr,
                                                  xattr_data_t *xattr_data,
                                                  int stream,
                                                  char *content,
@@ -964,7 +964,7 @@ static bxattr_exit_code irix_parse_xattr_streams(JobControlRecord *jcr,
    int cnt, cmp_size, name_space_index, flags;
    xattr_t *current_xattr;
    alist *xattr_value_list;
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 
    xattr_value_list = New(alist(10, not_owned_by_alist));
 
@@ -972,7 +972,7 @@ static bxattr_exit_code irix_parse_xattr_streams(JobControlRecord *jcr,
 			        xattr_data,
                                 content,
                                 content_length,
-                                xattr_value_list) != bxattr_exit_ok) {
+                                xattr_value_list) != BxattrExitCode::bxattr_exit_ok) {
       goto bail_out;
    }
 
@@ -1014,7 +1014,7 @@ static bxattr_exit_code irix_parse_xattr_streams(JobControlRecord *jcr,
 
          switch (errno) {
          case ENOENT:
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             goto bail_out;
          case EEXIST:
             /*
@@ -1025,7 +1025,7 @@ static bxattr_exit_code irix_parse_xattr_streams(JobControlRecord *jcr,
                          current_xattr->value_length, flags) != 0) {
                switch (errno) {
                case ENOENT:
-                  retval = bxattr_exit_ok;
+                  retval = BxattrExitCode::bxattr_exit_ok;
                   goto bail_out;
                default:
                   Mmsg2(jcr->errmsg,
@@ -1048,7 +1048,7 @@ static bxattr_exit_code irix_parse_xattr_streams(JobControlRecord *jcr,
       }
    }
 
-   retval = bxattr_exit_ok;
+   retval = BxattrExitCode::bxattr_exit_ok;
 
 bail_out:
    XattrDropInternalTable(xattr_value_list);
@@ -1059,10 +1059,10 @@ bail_out:
 /**
  * Function pointers to the build and parse function to use for these xattrs.
  */
-static bxattr_exit_code (*os_build_xattr_streams)
+static BxattrExitCode (*os_build_xattr_streams)
                         (JobControlRecord *jcr, xattr_data_t *xattr_data, FindFilesPacket *ff_pkt) =
                         irix_build_xattr_streams;
-static bxattr_exit_code (*os_parse_xattr_streams)
+static BxattrExitCode (*os_parse_xattr_streams)
                         (JobControlRecord *jcr, xattr_data_t *xattr_data,
                          int stream, char *content, uint32_t content_length) =
                         irix_parse_xattr_streams;
@@ -1151,7 +1151,7 @@ static const char *xattr_skiplist[1] = {
    #endif
 #endif
 
-static bxattr_exit_code generic_build_xattr_streams(JobControlRecord *jcr,
+static BxattrExitCode generic_build_xattr_streams(JobControlRecord *jcr,
                                                     xattr_data_t *xattr_data,
                                                     FindFilesPacket *ff_pkt)
 {
@@ -1165,7 +1165,7 @@ static bxattr_exit_code generic_build_xattr_streams(JobControlRecord *jcr,
    uint32_t expected_serialize_len = 0;
    xattr_t *current_xattr;
    alist *xattr_value_list = NULL;
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 
    /*
     * First get the length of the available list with extended attributes.
@@ -1177,7 +1177,7 @@ static bxattr_exit_code generic_build_xattr_streams(JobControlRecord *jcr,
 
       switch (errno) {
       case ENOENT:
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          goto bail_out;
       case BXATTR_ENOTSUP:
          /*
@@ -1188,7 +1188,7 @@ static bxattr_exit_code generic_build_xattr_streams(JobControlRecord *jcr,
           * change from one filesystem to another.
           */
          xattr_data->flags &= ~BXATTR_FLAG_SAVE_NATIVE;
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          Mmsg1(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          Dmsg1(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          goto bail_out;
@@ -1203,7 +1203,7 @@ static bxattr_exit_code generic_build_xattr_streams(JobControlRecord *jcr,
       break;
    }
    case 0:
-      retval = bxattr_exit_ok;
+      retval = BxattrExitCode::bxattr_exit_ok;
       goto bail_out;
    default:
       break;
@@ -1225,7 +1225,7 @@ static bxattr_exit_code generic_build_xattr_streams(JobControlRecord *jcr,
 
       switch (errno) {
       case ENOENT:
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          goto bail_out;
       default:
          Mmsg2(jcr->errmsg,
@@ -1293,7 +1293,7 @@ static bxattr_exit_code generic_build_xattr_streams(JobControlRecord *jcr,
 
          switch (errno) {
          case ENOENT:
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             goto bail_out;
          default:
             Mmsg2(jcr->errmsg,
@@ -1345,7 +1345,7 @@ static bxattr_exit_code generic_build_xattr_streams(JobControlRecord *jcr,
 
             switch (errno) {
             case ENOENT:
-               retval = bxattr_exit_ok;
+               retval = BxattrExitCode::bxattr_exit_ok;
                break;
             default:
                Mmsg2(jcr->errmsg,
@@ -1417,7 +1417,7 @@ static bxattr_exit_code generic_build_xattr_streams(JobControlRecord *jcr,
        */
       retval = SendXattrStream(jcr, xattr_data, os_default_xattr_streams[0]);
    } else {
-      retval = bxattr_exit_ok;
+      retval = BxattrExitCode::bxattr_exit_ok;
    }
 
 bail_out:
@@ -1431,7 +1431,7 @@ bail_out:
    return retval;
 }
 
-static bxattr_exit_code generic_parse_xattr_streams(JobControlRecord *jcr,
+static BxattrExitCode generic_parse_xattr_streams(JobControlRecord *jcr,
                                                     xattr_data_t *xattr_data,
                                                     int stream,
                                                     char *content,
@@ -1439,7 +1439,7 @@ static bxattr_exit_code generic_parse_xattr_streams(JobControlRecord *jcr,
 {
    xattr_t *current_xattr;
    alist *xattr_value_list;
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 
    xattr_value_list = New(alist(10, not_owned_by_alist));
 
@@ -1447,7 +1447,7 @@ static bxattr_exit_code generic_parse_xattr_streams(JobControlRecord *jcr,
 			        xattr_data,
                                 content,
                                 content_length,
-                                xattr_value_list) != bxattr_exit_ok) {
+                                xattr_value_list) != BxattrExitCode::bxattr_exit_ok) {
       goto bail_out;
    }
 
@@ -1467,7 +1467,7 @@ static bxattr_exit_code generic_parse_xattr_streams(JobControlRecord *jcr,
              * change from one filesystem to another.
              */
             xattr_data->flags &= ~BXATTR_FLAG_RESTORE_NATIVE;
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             Mmsg1(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
             Dmsg1(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
             goto bail_out;
@@ -1482,7 +1482,7 @@ static bxattr_exit_code generic_parse_xattr_streams(JobControlRecord *jcr,
       }
    }
 
-   retval = bxattr_exit_ok;
+   retval = BxattrExitCode::bxattr_exit_ok;
 
 bail_out:
    XattrDropInternalTable(xattr_value_list);
@@ -1493,10 +1493,10 @@ bail_out:
 /**
  * Function pointers to the build and parse function to use for these xattrs.
  */
-static bxattr_exit_code (*os_build_xattr_streams)
+static BxattrExitCode (*os_build_xattr_streams)
                         (JobControlRecord *jcr, xattr_data_t *xattr_data, FindFilesPacket *ff_pkt) =
                         generic_build_xattr_streams;
-static bxattr_exit_code (*os_parse_xattr_streams)
+static BxattrExitCode (*os_parse_xattr_streams)
                         (JobControlRecord *jcr, xattr_data_t *xattr_data,
                          int stream, char *content, uint32_t content_length) =
                         generic_parse_xattr_streams;
@@ -1580,7 +1580,7 @@ static const char *xattr_skiplist[1] = {
 };
 #endif
 
-static bxattr_exit_code bsd_build_xattr_streams(JobControlRecord *jcr,
+static BxattrExitCode bsd_build_xattr_streams(JobControlRecord *jcr,
                                                 xattr_data_t *xattr_data,
                                                 FindFilesPacket *ff_pkt)
 {
@@ -1596,7 +1596,7 @@ static bxattr_exit_code bsd_build_xattr_streams(JobControlRecord *jcr,
    char current_attrname[XATTR_BUFSIZ], current_attrtuple[XATTR_BUFSIZ];
    xattr_t *current_xattr;
    alist *xattr_value_list = NULL;
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 
    /*
     * Loop over all available xattr namespaces.
@@ -1620,7 +1620,7 @@ static bxattr_exit_code bsd_build_xattr_streams(JobControlRecord *jcr,
 
          switch (errno) {
          case ENOENT:
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             goto bail_out;
 #if defined(EOPNOTSUPP)
          case EOPNOTSUPP:
@@ -1665,7 +1665,7 @@ static bxattr_exit_code bsd_build_xattr_streams(JobControlRecord *jcr,
 
          switch (errno) {
          case ENOENT:
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             goto bail_out;
          default:
             Mmsg2(jcr->errmsg,
@@ -1765,7 +1765,7 @@ static bxattr_exit_code bsd_build_xattr_streams(JobControlRecord *jcr,
 
             switch (errno) {
             case ENOENT:
-               retval = bxattr_exit_ok;
+               retval = BxattrExitCode::bxattr_exit_ok;
                goto bail_out;
             default:
                Mmsg2(jcr->errmsg,
@@ -1820,7 +1820,7 @@ static bxattr_exit_code bsd_build_xattr_streams(JobControlRecord *jcr,
 
                switch (errno) {
                case ENOENT:
-                  retval = bxattr_exit_ok;
+                  retval = BxattrExitCode::bxattr_exit_ok;
                   break;
                default:
                   Mmsg2(jcr->errmsg,
@@ -1904,7 +1904,7 @@ static bxattr_exit_code bsd_build_xattr_streams(JobControlRecord *jcr,
        */
       retval = SendXattrStream(jcr, xattr_data, os_default_xattr_streams[0]);
    } else {
-      retval = bxattr_exit_ok;
+      retval = BxattrExitCode::bxattr_exit_ok;
    }
 
 bail_out:
@@ -1921,7 +1921,7 @@ bail_out:
    return retval;
 }
 
-static bxattr_exit_code bsd_parse_xattr_streams(JobControlRecord *jcr,
+static BxattrExitCode bsd_parse_xattr_streams(JobControlRecord *jcr,
                                                 xattr_data_t *xattr_data,
                                                 int stream,
                                                 char *content,
@@ -1931,7 +1931,7 @@ static bxattr_exit_code bsd_parse_xattr_streams(JobControlRecord *jcr,
    alist *xattr_value_list;
    int current_attrnamespace, cnt;
    char *attrnamespace, *attrname;
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 
    xattr_value_list = New(alist(10, not_owned_by_alist));
 
@@ -1939,7 +1939,7 @@ static bxattr_exit_code bsd_parse_xattr_streams(JobControlRecord *jcr,
 			        xattr_data,
                                 content,
                                 content_length,
-                                xattr_value_list) != bxattr_exit_ok) {
+                                xattr_value_list) != BxattrExitCode::bxattr_exit_ok) {
       goto bail_out;
    }
 
@@ -1995,7 +1995,7 @@ static bxattr_exit_code bsd_parse_xattr_streams(JobControlRecord *jcr,
       }
    }
 
-   retval = bxattr_exit_ok;
+   retval = BxattrExitCode::bxattr_exit_ok;
 
 bail_out:
    XattrDropInternalTable(xattr_value_list);
@@ -2006,10 +2006,10 @@ bail_out:
 /**
  * Function pointers to the build and parse function to use for these xattrs.
  */
-static bxattr_exit_code (*os_build_xattr_streams)
+static BxattrExitCode (*os_build_xattr_streams)
                         (JobControlRecord *jcr, xattr_data_t *xattr_data, FindFilesPacket *ff_pkt) =
                         bsd_build_xattr_streams;
-static bxattr_exit_code (*os_parse_xattr_streams)
+static BxattrExitCode (*os_parse_xattr_streams)
                         (JobControlRecord *jcr, xattr_data_t *xattr_data,
                          int stream, char *content, uint32_t content_length) =
                         bsd_parse_xattr_streams;
@@ -2043,7 +2043,7 @@ static const char *xattr_skiplist[1] = {
    NULL
 };
 
-static bxattr_exit_code tru64_build_xattr_streams(JobControlRecord *jcr,
+static BxattrExitCode tru64_build_xattr_streams(JobControlRecord *jcr,
                                                   xattr_data_t *xattr_data,
                                                   FindFilesPacket *ff_pkt)
 {
@@ -2062,7 +2062,7 @@ static bxattr_exit_code tru64_build_xattr_streams(JobControlRecord *jcr,
    xattr_t *current_xattr;
    alist *xattr_value_list = NULL;
    struct proplistname_args prop_args;
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
    POOLMEM *xattrbuf = GetPoolMemory(PM_MESSAGE);
 
    xattrbuf_size = SizeofPoolMemory(xattrbuf);
@@ -2087,7 +2087,7 @@ static bxattr_exit_code tru64_build_xattr_streams(JobControlRecord *jcr,
           * change from one filesystem to another.
           */
          xattr_data->flags &= ~BXATTR_FLAG_SAVE_NATIVE;
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          Mmsg2(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          Dmsg2(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          goto bail_out;
@@ -2133,7 +2133,7 @@ static bxattr_exit_code tru64_build_xattr_streams(JobControlRecord *jcr,
              * we are better of forgetting this xattr as it seems its list is changing at this
              * exact moment so we can never make a good backup copy of it.
              */
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             goto bail_out;
          default:
             break;
@@ -2142,7 +2142,7 @@ static bxattr_exit_code tru64_build_xattr_streams(JobControlRecord *jcr,
          /*
           * No xattr on file.
           */
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          goto bail_out;
       }
       break;
@@ -2255,7 +2255,7 @@ static bxattr_exit_code tru64_build_xattr_streams(JobControlRecord *jcr,
        */
       retval = SendXattrStream(jcr, xattr_data, os_default_xattr_streams[0]);
    } else {
-      retval = bxattr_exit_ok;
+      retval = BxattrExitCode::bxattr_exit_ok;
    }
 
 bail_out:
@@ -2267,7 +2267,7 @@ bail_out:
    return retval;
 }
 
-static bxattr_exit_code tru64_parse_xattr_streams(JobControlRecord *jcr,
+static BxattrExitCode tru64_parse_xattr_streams(JobControlRecord *jcr,
                                                   xattr_data_t *xattr_data,
                                                   int stream,
                                                   char *content,
@@ -2277,7 +2277,7 @@ static bxattr_exit_code tru64_parse_xattr_streams(JobControlRecord *jcr,
    int32_t xattrbuf_size, cnt;
    xattr_t *current_xattr;
    alist *xattr_value_list;
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 
    xattr_value_list = New(alist(10, not_owned_by_alist));
 
@@ -2285,7 +2285,7 @@ static bxattr_exit_code tru64_parse_xattr_streams(JobControlRecord *jcr,
 			        xattr_data,
                                 content,
                                 content_length,
-                                xattr_value_list) != bxattr_exit_ok) {
+                                xattr_value_list) != BxattrExitCode::bxattr_exit_ok) {
       goto bail_out;
    }
 
@@ -2339,7 +2339,7 @@ static bxattr_exit_code tru64_parse_xattr_streams(JobControlRecord *jcr,
           * change from one filesystem to another.
           */
          xattr_data->flags &= ~BXATTR_FLAG_RESTORE_NATIVE;
-         retval = bxattr_exit_error;
+         retval = BxattrExitCode::bxattr_exit_error;
          Mmsg2(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          Dmsg2(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          goto bail_out;
@@ -2357,7 +2357,7 @@ static bxattr_exit_code tru64_parse_xattr_streams(JobControlRecord *jcr,
       break;
    }
 
-   retval = bxattr_exit_ok;
+   retval = BxattrExitCode::bxattr_exit_ok;
 
 bail_out:
    if (xattrbuf) {
@@ -2371,10 +2371,10 @@ bail_out:
 /**
  * Function pointers to the build and parse function to use for these xattrs.
  */
-static bxattr_exit_code (*os_build_xattr_streams)
+static BxattrExitCode (*os_build_xattr_streams)
                         (JobControlRecord *jcr, xattr_data_t *xattr_data, FindFilesPacket *ff_pkt) =
                         tru64_build_xattr_streams;
-static bxattr_exit_code (*os_parse_xattr_streams)
+static BxattrExitCode (*os_parse_xattr_streams)
                         (JobControlRecord *jcr, xattr_data_t *xattr_data,
                          int stream, char *content, uint32_t content_length) =
                         tru64_parse_xattr_streams;
@@ -2641,13 +2641,13 @@ static bool AclIsTrivial(int count, aclent_t *entries)
 }
 #endif /* HAVE_ACL && !HAVE_EXTENDED_ACL */
 
-static bxattr_exit_code solaris_save_xattr_acl(JobControlRecord *jcr,
+static BxattrExitCode solaris_save_xattr_acl(JobControlRecord *jcr,
                                                xattr_data_t *xattr_data,
                                                int fd,
                                                const char *attrname,
                                                char **acl_text)
 {
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 #ifdef HAVE_ACL
 #ifdef HAVE_EXTENDED_ACL
    int flags;
@@ -2667,7 +2667,7 @@ static bxattr_exit_code solaris_save_xattr_acl(JobControlRecord *jcr,
 
          switch (errno) {
          case ENOENT:
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             goto bail_out;
          default:
             Mmsg3(jcr->errmsg,
@@ -2697,7 +2697,7 @@ static bxattr_exit_code solaris_save_xattr_acl(JobControlRecord *jcr,
    } else {
       *acl_text = NULL;
    }
-   retval = bxattr_exit_ok;
+   retval = BxattrExitCode::bxattr_exit_ok;
 #else /* HAVE_EXTENDED_ACL */
    int n;
    aclent_t *acls = NULL;
@@ -2720,7 +2720,7 @@ static bxattr_exit_code solaris_save_xattr_acl(JobControlRecord *jcr,
          switch (errno) {
          case ENOENT:
             free(acls);
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             goto bail_out;
          default:
             Mmsg3(jcr->errmsg,
@@ -2756,11 +2756,11 @@ static bxattr_exit_code solaris_save_xattr_acl(JobControlRecord *jcr,
    } else {
       *acl_text = NULL;
    }
-   retval = bxattr_exit_ok;
+   retval = BxattrExitCode::bxattr_exit_ok;
 #endif /* HAVE_EXTENDED_ACL */
 
 #else /* HAVE_ACL */
-   retval = bxattr_exit_ok;
+   retval = BxattrExitCode::bxattr_exit_ok;
 #endif /* HAVE_ACL */
 
 bail_out:
@@ -2770,7 +2770,7 @@ bail_out:
 /**
  * Forward declaration for recursive function call.
  */
-static bxattr_exit_code solaris_save_xattrs(JobControlRecord *jcr,
+static BxattrExitCode solaris_save_xattrs(JobControlRecord *jcr,
                                             xattr_data_t *xattr_data,
                                             const char *xattr_namespace,
                                             const char *attr_parent);
@@ -2790,7 +2790,7 @@ static bxattr_exit_code solaris_save_xattrs(JobControlRecord *jcr,
  * acl_string is an acl text when a non trivial acl is set on the xattr.
  * actual_xattr_data is the content of the xattr file.
  */
-static bxattr_exit_code solaris_save_xattr(JobControlRecord *jcr,
+static BxattrExitCode solaris_save_xattr(JobControlRecord *jcr,
                                            xattr_data_t *xattr_data,
                                            int fd,
                                            const char *xattr_namespace,
@@ -2807,7 +2807,7 @@ static bxattr_exit_code solaris_save_xattr(JobControlRecord *jcr,
    char *acl_text = NULL;
    char attribs[XATTR_BUFSIZ];
    char buffer[XATTR_BUFSIZ];
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 
    Bsnprintf(target_attrname, sizeof(target_attrname), "%s%s", xattr_namespace, attrname);
 
@@ -2819,7 +2819,7 @@ static bxattr_exit_code solaris_save_xattr(JobControlRecord *jcr,
 
       switch (errno) {
       case ENOENT:
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          goto bail_out;
       default:
          Mmsg3(jcr->errmsg,
@@ -2843,7 +2843,7 @@ static bxattr_exit_code solaris_save_xattr(JobControlRecord *jcr,
       /*
        * Get any acl on the xattr.
        */
-      if (solaris_save_xattr_acl(jcr, xattr_data, attrfd, attrname, &acl_text) != bxattr_exit_ok)
+      if (solaris_save_xattr_acl(jcr, xattr_data, attrfd, attrname, &acl_text) != BxattrExitCode::bxattr_exit_ok)
          goto bail_out;
 
       /*
@@ -2860,7 +2860,7 @@ static bxattr_exit_code solaris_save_xattr(JobControlRecord *jcr,
       /*
        * Get any acl on the xattr.
        */
-      if (solaris_save_xattr_acl(jcr, xattr_data, attrfd, attrname, &acl_text) != bxattr_exit_ok)
+      if (solaris_save_xattr_acl(jcr, xattr_data, attrfd, attrname, &acl_text) != BxattrExitCode::bxattr_exit_ok)
          goto bail_out;
 
       /*
@@ -2932,7 +2932,7 @@ static bxattr_exit_code solaris_save_xattr(JobControlRecord *jcr,
       /*
        * Get any acl on the xattr.
        */
-      if (solaris_save_xattr_acl(jcr, xattr_data, attrfd, attrname, &acl_text) != bxattr_exit_ok) {
+      if (solaris_save_xattr_acl(jcr, xattr_data, attrfd, attrname, &acl_text) != BxattrExitCode::bxattr_exit_ok) {
          goto bail_out;
       }
 
@@ -2952,7 +2952,7 @@ static bxattr_exit_code solaris_save_xattr(JobControlRecord *jcr,
 
          switch (errno) {
          case ENOENT:
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             goto bail_out;
          default:
             Mmsg3(jcr->errmsg,
@@ -2975,7 +2975,7 @@ static bxattr_exit_code solaris_save_xattr(JobControlRecord *jcr,
 
          switch (errno) {
          case ENOENT:
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             goto bail_out;
          default:
             Mmsg3(jcr->errmsg,
@@ -2998,7 +2998,7 @@ static bxattr_exit_code solaris_save_xattr(JobControlRecord *jcr,
       xattr_data->u.build->content_length = cnt;
       retval = SendXattrStream(jcr, xattr_data, stream);
 
-      if (retval == bxattr_exit_ok) {
+      if (retval == BxattrExitCode::bxattr_exit_ok) {
          xattr_data->u.build->nr_saved++;
       }
 
@@ -3018,7 +3018,7 @@ static bxattr_exit_code solaris_save_xattr(JobControlRecord *jcr,
     */
    if (xattr_data->u.build->nr_saved == 0) {
       retval = SendXattrStream(jcr, xattr_data, STREAM_XATTR_SOLARIS);
-      if (retval != bxattr_exit_ok) {
+      if (retval != BxattrExitCode::bxattr_exit_ok) {
          goto bail_out;
       }
       xattr_data->u.build->nr_saved++;
@@ -3071,7 +3071,7 @@ static bxattr_exit_code solaris_save_xattr(JobControlRecord *jcr,
     * We build a new xattr stream send it to the SD.
     */
    retval = SendXattrStream(jcr, xattr_data, stream);
-   if (retval != bxattr_exit_ok) {
+   if (retval != BxattrExitCode::bxattr_exit_ok) {
        goto bail_out;
    }
    xattr_data->u.build->nr_saved++;
@@ -3090,7 +3090,7 @@ static bxattr_exit_code solaris_save_xattr(JobControlRecord *jcr,
 
       switch (errno) {
       case ENOENT:
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          goto bail_out;
       default:
          Mmsg2(jcr->errmsg,
@@ -3112,7 +3112,7 @@ bail_out:
    return retval;
 }
 
-static bxattr_exit_code solaris_save_xattrs(JobControlRecord *jcr,
+static BxattrExitCode solaris_save_xattrs(JobControlRecord *jcr,
                                             xattr_data_t *xattr_data,
                                             const char *xattr_namespace,
                                             const char *attr_parent)
@@ -3122,7 +3122,7 @@ static bxattr_exit_code solaris_save_xattrs(JobControlRecord *jcr,
    DIR *dirp;
    struct dirent *dp;
    char current_xattr_namespace[PATH_MAX];
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 
    /*
     * Determine what argument to use. Use attr_parent when set
@@ -3150,7 +3150,7 @@ static bxattr_exit_code solaris_save_xattrs(JobControlRecord *jcr,
 
       switch (errno) {
       case ENOENT:
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          goto bail_out;
       default:
          Mmsg2(jcr->errmsg,
@@ -3175,10 +3175,10 @@ static bxattr_exit_code solaris_save_xattrs(JobControlRecord *jcr,
           * Which is not problem we just forget about this this xattr.
           * But as this is not an error we return a positive return value.
           */
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          goto bail_out;
       case ENOENT:
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          goto bail_out;
       default:
          Mmsg3(jcr->errmsg,
@@ -3289,7 +3289,7 @@ static bxattr_exit_code solaris_save_xattrs(JobControlRecord *jcr,
    }
 
    closedir(dirp);
-   retval = bxattr_exit_ok;
+   retval = BxattrExitCode::bxattr_exit_ok;
 
 bail_out:
    if (attrdirfd != -1)
@@ -3300,7 +3300,7 @@ bail_out:
 }
 
 #ifdef HAVE_ACL
-static bxattr_exit_code solaris_restore_xattr_acl(JobControlRecord *jcr,
+static BxattrExitCode solaris_restore_xattr_acl(JobControlRecord *jcr,
                                                   xattr_data_t *xattr_data,
                                                   int fd,
                                                   const char *attrname,
@@ -3314,7 +3314,7 @@ static bxattr_exit_code solaris_restore_xattr_acl(JobControlRecord *jcr,
       Mmsg1(jcr->errmsg,
             _("Unable to convert acl from text on file \"%s\"\n"),
             xattr_data->last_fname);
-      return bxattr_exit_error;
+      return BxattrExitCode::bxattr_exit_error;
    }
 
    if ((fd != -1 && facl_set(fd, aclp) != 0) ||
@@ -3326,13 +3326,13 @@ static bxattr_exit_code solaris_restore_xattr_acl(JobControlRecord *jcr,
             attrname, xattr_data->last_fname, be.bstrerror());
       Dmsg3(100, "Unable to restore acl of xattr %s on file \"%s\": ERR=%s\n",
             attrname, xattr_data->last_fname, be.bstrerror());
-      return bxattr_exit_error;
+      return BxattrExitCode::bxattr_exit_error;
    }
 
    if (aclp) {
       acl_free(aclp);
    }
-   return bxattr_exit_ok;
+   return BxattrExitCode::bxattr_exit_ok;
 
 #else /* HAVE_EXTENDED_ACL */
    int n;
@@ -3349,21 +3349,21 @@ static bxattr_exit_code solaris_restore_xattr_acl(JobControlRecord *jcr,
                attrname, xattr_data->last_fname, be.bstrerror());
          Dmsg3(100, "Unable to restore acl of xattr %s on file \"%s\": ERR=%s\n",
                attrname, xattr_data->last_fname, be.bstrerror());
-         return bxattr_exit_error;
+         return BxattrExitCode::bxattr_exit_error;
       }
    }
 
    if (acls) {
       free(acls);
    }
-   return bxattr_exit_ok;
+   return BxattrExitCode::bxattr_exit_ok;
 
 #endif /* HAVE_EXTENDED_ACL */
 
 }
 #endif /* HAVE_ACL */
 
-static bxattr_exit_code solaris_restore_xattrs(JobControlRecord *jcr,
+static BxattrExitCode solaris_restore_xattrs(JobControlRecord *jcr,
                                                xattr_data_t *xattr_data,
                                                bool is_extensible,
                                                char *content,
@@ -3379,7 +3379,7 @@ static bxattr_exit_code solaris_restore_xattrs(JobControlRecord *jcr,
    int32_t inum;
    struct stat st;
    struct timeval times[2];
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 
    /*
     * Parse the xattr stream. First the part that is the same for all xattrs.
@@ -3589,7 +3589,7 @@ static bxattr_exit_code solaris_restore_xattrs(JobControlRecord *jcr,
          /*
           * Successfully restored xattr.
           */
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          goto bail_out;
       } else {
          if ((bp = strchr(acl_text, '\0')) == (char *)NULL ||
@@ -3678,7 +3678,7 @@ static bxattr_exit_code solaris_restore_xattrs(JobControlRecord *jcr,
       /*
        * Successfully restored xattr.
        */
-      retval = bxattr_exit_ok;
+      retval = BxattrExitCode::bxattr_exit_ok;
       goto bail_out;
    default:
       goto bail_out;
@@ -3697,10 +3697,10 @@ static bxattr_exit_code solaris_restore_xattrs(JobControlRecord *jcr,
              * Gentile way of the system saying this type of xattr layering is not supported.
              * But as this is not an error we return a positive return value.
              */
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             break;
          case ENOENT:
-            retval = bxattr_exit_ok;
+            retval = BxattrExitCode::bxattr_exit_ok;
             break;
          default:
             Mmsg3(jcr->errmsg,
@@ -3715,7 +3715,7 @@ static bxattr_exit_code solaris_restore_xattrs(JobControlRecord *jcr,
 
 #ifdef HAVE_ACL
    if (acl_text && *acl_text)
-      if (solaris_restore_xattr_acl(jcr, xattr_data, attrfd, target_attrname, acl_text) != bxattr_exit_ok)
+      if (solaris_restore_xattr_acl(jcr, xattr_data, attrfd, target_attrname, acl_text) != BxattrExitCode::bxattr_exit_ok)
          goto bail_out;
 #endif /* HAVE_ACL */
 
@@ -3743,7 +3743,7 @@ static bxattr_exit_code solaris_restore_xattrs(JobControlRecord *jcr,
    /*
     * Successfully restored xattr.
     */
-   retval = bxattr_exit_ok;
+   retval = BxattrExitCode::bxattr_exit_ok;
    goto bail_out;
 
 parse_error:
@@ -3766,12 +3766,12 @@ bail_out:
    return retval;
 }
 
-static bxattr_exit_code solaris_build_xattr_streams(JobControlRecord *jcr,
+static BxattrExitCode solaris_build_xattr_streams(JobControlRecord *jcr,
                                                     xattr_data_t *xattr_data,
                                                     FindFilesPacket *ff_pkt)
 {
    char cwd[PATH_MAX];
-   bxattr_exit_code retval = bxattr_exit_ok;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_ok;
 
    /*
     * First see if extended attributes or extensible attributes are present.
@@ -3794,7 +3794,7 @@ static bxattr_exit_code solaris_build_xattr_streams(JobControlRecord *jcr,
    return retval;
 }
 
-static bxattr_exit_code solaris_parse_xattr_streams(JobControlRecord *jcr,
+static BxattrExitCode solaris_parse_xattr_streams(JobControlRecord *jcr,
                                                     xattr_data_t *xattr_data,
                                                     int stream,
                                                     char *content,
@@ -3802,7 +3802,7 @@ static bxattr_exit_code solaris_parse_xattr_streams(JobControlRecord *jcr,
 {
    char cwd[PATH_MAX];
    bool is_extensible = false;
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 
    /*
     * First make sure we can restore xattr on the filesystem.
@@ -3852,10 +3852,10 @@ bail_out:
 /**
  * Function pointers to the build and parse function to use for these xattrs.
  */
-static bxattr_exit_code (*os_build_xattr_streams)
+static BxattrExitCode (*os_build_xattr_streams)
                         (JobControlRecord *jcr, xattr_data_t *xattr_data, FindFilesPacket *ff_pkt) =
                         solaris_build_xattr_streams;
-static bxattr_exit_code (*os_parse_xattr_streams)
+static BxattrExitCode (*os_parse_xattr_streams)
                         (JobControlRecord *jcr, xattr_data_t *xattr_data,
                          int stream, char *content, uint32_t content_length) =
                         solaris_parse_xattr_streams;
@@ -3865,7 +3865,7 @@ static bxattr_exit_code (*os_parse_xattr_streams)
 /**
  * Entry points when compiled with support for XATTRs on a supported platform.
  */
-bxattr_exit_code BuildXattrStreams(JobControlRecord *jcr,
+BxattrExitCode BuildXattrStreams(JobControlRecord *jcr,
                                      xattr_data_t *xattr_data,
                                      FindFilesPacket *ff_pkt)
 {
@@ -3891,11 +3891,11 @@ bxattr_exit_code BuildXattrStreams(JobControlRecord *jcr,
    if ((xattr_data->flags & BXATTR_FLAG_SAVE_NATIVE) && os_build_xattr_streams) {
       return os_build_xattr_streams(jcr, xattr_data, ff_pkt);
    } else {
-      return bxattr_exit_ok;
+      return BxattrExitCode::bxattr_exit_ok;
    }
 }
 
-bxattr_exit_code ParseXattrStreams(JobControlRecord *jcr,
+BxattrExitCode ParseXattrStreams(JobControlRecord *jcr,
                                      xattr_data_t *xattr_data,
                                      int stream,
                                      char *content,
@@ -3904,7 +3904,7 @@ bxattr_exit_code ParseXattrStreams(JobControlRecord *jcr,
    int ret;
    struct stat st;
    unsigned int cnt;
-   bxattr_exit_code retval = bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
 
    /*
     * See if we are changing from one device to another.
@@ -3919,7 +3919,7 @@ bxattr_exit_code ParseXattrStreams(JobControlRecord *jcr,
 
       switch (errno) {
       case ENOENT:
-         retval = bxattr_exit_ok;
+         retval = BxattrExitCode::bxattr_exit_ok;
          goto bail_out;
       default:
          Mmsg2(jcr->errmsg,
@@ -3965,7 +3965,7 @@ bxattr_exit_code ParseXattrStreams(JobControlRecord *jcr,
        * Increment error count but don't log an error again for the same filesystem.
        */
       xattr_data->u.parse->nr_errors++;
-      retval = bxattr_exit_ok;
+      retval = BxattrExitCode::bxattr_exit_ok;
       goto bail_out;
    }
 
