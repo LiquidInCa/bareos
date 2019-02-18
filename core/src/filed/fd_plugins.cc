@@ -1447,17 +1447,17 @@ BxattrExitCode PluginBuildXattrStreams(JobControlRecord *jcr,
 #if defined(HAVE_XATTR)
    alist *xattr_value_list = NULL;
 #endif
-   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::kBxattrExitError;
 
    Dmsg0(debuglevel, "PluginBuildXattrStreams\n");
 
    if (!jcr->plugin_ctx) {
-      return BxattrExitCode::bxattr_exit_ok;
+      return BxattrExitCode::kBxattrExitOk;
    }
    plugin = (Plugin *)jcr->plugin_ctx->plugin;
 
    if (PlugFunc(plugin)->getXattr == NULL) {
-      return BxattrExitCode::bxattr_exit_ok;
+      return BxattrExitCode::kBxattrExitOk;
    } else {
 #if defined(HAVE_XATTR)
       bool more;
@@ -1554,7 +1554,7 @@ BxattrExitCode PluginBuildXattrStreams(JobControlRecord *jcr,
           */
          retval = SendXattrStream(jcr, xattr_data, STREAM_XATTR_PLUGIN);
       } else {
-         retval = BxattrExitCode::bxattr_exit_ok;
+         retval = BxattrExitCode::kBxattrExitOk;
       }
 #endif
    }
@@ -1582,12 +1582,12 @@ BxattrExitCode PluginParseXattrStreams(JobControlRecord *jcr,
    Plugin *plugin;
    alist *xattr_value_list = NULL;
 #endif
-   BxattrExitCode retval = BxattrExitCode::bxattr_exit_error;
+   BxattrExitCode retval = BxattrExitCode::kBxattrExitError;
 
    Dmsg0(debuglevel, "PluginParseXattrStreams\n");
 
    if (!jcr->plugin_ctx) {
-      return BxattrExitCode::bxattr_exit_ok;
+      return BxattrExitCode::kBxattrExitOk;
    }
 
 #if defined(HAVE_XATTR)
@@ -1602,7 +1602,7 @@ BxattrExitCode PluginParseXattrStreams(JobControlRecord *jcr,
                                    xattr_data,
                                    content,
                                    content_length,
-                                   xattr_value_list) != BxattrExitCode::bxattr_exit_ok) {
+                                   xattr_value_list) != BxattrExitCode::kBxattrExitOk) {
          goto bail_out;
       }
 
@@ -1624,7 +1624,7 @@ BxattrExitCode PluginParseXattrStreams(JobControlRecord *jcr,
          }
       }
 
-      retval = BxattrExitCode::bxattr_exit_ok;
+      retval = BxattrExitCode::kBxattrExitOk;
    }
 
 bail_out:

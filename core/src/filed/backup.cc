@@ -486,9 +486,9 @@ static inline bool DoBackupXattr(JobControlRecord *jcr, FindFilesPacket *ff_pkt)
    }
 
    switch (retval) {
-   case BxattrExitCode::bxattr_exit_fatal:
+   case BxattrExitCode::kBxattrExitFatal:
       return false;
-   case BxattrExitCode::bxattr_exit_error:
+   case BxattrExitCode::kBxattrExitError:
       /*
        * Non-fatal errors, count them and when the number is under
        * XATTR_REPORT_ERR_MAX_PER_JOB print the error message set by the
@@ -499,7 +499,7 @@ static inline bool DoBackupXattr(JobControlRecord *jcr, FindFilesPacket *ff_pkt)
       }
       jcr->xattr_data->u.build->nr_errors++;
       break;
-   case BxattrExitCode::bxattr_exit_ok:
+   case BxattrExitCode::kBxattrExitOk:
       break;
    }
 

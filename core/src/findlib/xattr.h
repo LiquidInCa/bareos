@@ -33,9 +33,9 @@
  * Return codes from xattr subroutines.
  */
 enum class BxattrExitCode {
-   bxattr_exit_fatal,
-   bxattr_exit_error,
-   bxattr_exit_ok
+   kBxattrExitFatal,
+   kBxattrExitError,
+   kBxattrExitOk
 };
 
 #if defined(HAVE_LINUX_OS)

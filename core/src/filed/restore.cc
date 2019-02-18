@@ -267,15 +267,15 @@ static inline bool do_restore_xattr(JobControlRecord *jcr,
    }
 
    switch (retval) {
-   case BxattrExitCode::bxattr_exit_fatal:
+   case BxattrExitCode::kBxattrExitFatal:
       return false;
-   case BxattrExitCode::bxattr_exit_error:
+   case BxattrExitCode::kBxattrExitError:
       if (jcr->xattr_data->u.parse->nr_errors < XATTR_REPORT_ERR_MAX_PER_JOB) {
          Jmsg(jcr, M_ERROR, 0, "%s", jcr->errmsg);
       }
       jcr->xattr_data->u.parse->nr_errors++;
       break;
-   case BxattrExitCode::bxattr_exit_ok:
+   case BxattrExitCode::kBxattrExitOk:
       break;
    }
 
