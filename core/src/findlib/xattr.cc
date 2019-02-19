@@ -391,7 +391,7 @@ static BxattrExitCode aix_build_xattr_streams(JobControlRecord *jcr,
           */
          xattr_data->flags &= ~BXATTR_FLAG_SAVE_NATIVE;
          retval = BxattrExitCode::kBxattrExitWarning;
-         Mmsg1(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
+         Mmsg(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          Dmsg1(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          goto bail_out;
       default:
@@ -660,7 +660,7 @@ static BxattrExitCode aix_parse_xattr_streams(JobControlRecord *jcr,
              */
             xattr_data->flags &= ~BXATTR_FLAG_RESTORE_NATIVE;
             retval = BxattrExitCode::kBxattrExitWarning;
-            Mmsg1(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
+            Mmsg(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
             Dmsg1(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
             goto bail_out;
          default:
@@ -1189,7 +1189,7 @@ static BxattrExitCode generic_build_xattr_streams(JobControlRecord *jcr,
           */
          xattr_data->flags &= ~BXATTR_FLAG_SAVE_NATIVE;
          retval = BxattrExitCode::kBxattrExitWarning;
-         Mmsg1(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
+         Mmsg(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          Dmsg1(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          goto bail_out;
       default:
@@ -1468,7 +1468,7 @@ static BxattrExitCode generic_parse_xattr_streams(JobControlRecord *jcr,
              */
             xattr_data->flags &= ~BXATTR_FLAG_RESTORE_NATIVE;
             retval = BxattrExitCode::kBxattrExitWarning;
-            Mmsg1(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
+            Mmsg(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
             Dmsg1(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
             goto bail_out;
          default:
