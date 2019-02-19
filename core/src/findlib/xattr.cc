@@ -390,7 +390,7 @@ static BxattrExitCode aix_build_xattr_streams(JobControlRecord *jcr,
           * when we change from one filesystem to another.
           */
          xattr_data->flags &= ~BXATTR_FLAG_SAVE_NATIVE;
-         retval = BxattrExitCode::kBxattrExitError;
+         retval = BxattrExitCode::kBxattrExitWarning;
          Mmsg1(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          Dmsg1(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          goto bail_out;
@@ -659,7 +659,7 @@ static BxattrExitCode aix_parse_xattr_streams(JobControlRecord *jcr,
              * change from one filesystem to another.
              */
             xattr_data->flags &= ~BXATTR_FLAG_RESTORE_NATIVE;
-            retval = BxattrExitCode::kBxattrExitError;
+            retval = BxattrExitCode::kBxattrExitWarning;
             Mmsg1(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
             Dmsg1(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
             goto bail_out;
@@ -1188,7 +1188,7 @@ static BxattrExitCode generic_build_xattr_streams(JobControlRecord *jcr,
           * change from one filesystem to another.
           */
          xattr_data->flags &= ~BXATTR_FLAG_SAVE_NATIVE;
-         retval = BxattrExitCode::kBxattrExitError;
+         retval = BxattrExitCode::kBxattrExitWarning;
          Mmsg1(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          Dmsg1(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          goto bail_out;
@@ -1467,7 +1467,7 @@ static BxattrExitCode generic_parse_xattr_streams(JobControlRecord *jcr,
              * change from one filesystem to another.
              */
             xattr_data->flags &= ~BXATTR_FLAG_RESTORE_NATIVE;
-            retval = BxattrExitCode::kBxattrExitError;
+            retval = BxattrExitCode::kBxattrExitWarning;
             Mmsg1(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
             Dmsg1(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
             goto bail_out;
@@ -2087,7 +2087,7 @@ static BxattrExitCode tru64_build_xattr_streams(JobControlRecord *jcr,
           * change from one filesystem to another.
           */
          xattr_data->flags &= ~BXATTR_FLAG_SAVE_NATIVE;
-         retval = BxattrExitCode::kBxattrExitError;
+         retval = BxattrExitCode::kBxattrExitWarning;
          Mmsg2(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          Dmsg2(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          goto bail_out;
@@ -2339,7 +2339,7 @@ static BxattrExitCode tru64_parse_xattr_streams(JobControlRecord *jcr,
           * change from one filesystem to another.
           */
          xattr_data->flags &= ~BXATTR_FLAG_RESTORE_NATIVE;
-         retval = BxattrExitCode::kBxattrExitError;
+         retval = BxattrExitCode::kBxattrExitWarning;
          Mmsg2(jcr->errmsg, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          Dmsg2(100, error_message_disabling_xattributes.c_str(), xattr_data->last_fname);
          goto bail_out;
