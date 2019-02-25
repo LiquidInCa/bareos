@@ -30,6 +30,7 @@
 
 #define NEED_JANSSON_NAMESPACE 1
 #include "include/bareos.h"
+#include "stored/stored_conf.h"
 #include "stored/stored.h"
 #include "stored/stored_globals.h"
 #include "stored/sd_backends.h"
@@ -48,11 +49,12 @@ static CommonResourceHeader **res_head = sres_head;
 static void FreeResource(CommonResourceHeader *sres, int type);
 static bool SaveResource(int type, ResourceItem *items, int pass);
 static void DumpResource(int type,
-                  CommonResourceHeader *reshdr,
-                  void sendit(void *sock, const char *fmt, ...),
-                  void *sock,
-                  bool hide_sensitive_data,
-                  bool verbose);
+                         CommonResourceHeader *reshdr,
+                         void sendit(void *sock, const char *fmt, ...),
+                         void *sock,
+                         bool hide_sensitive_data,
+                         bool verbose);
+static void AppendToResourcesChain(UnionOfResources *new_resource, int type);
 
 /**
  * We build the current resource here statically,
@@ -61,11 +63,191 @@ static void DumpResource(int type,
 static UnionOfResources res_all;
 static int32_t res_all_size = sizeof(res_all);
 
-/**
- * Definition of records permitted within each
- * resource with the routine to process the record
- * information.
- */
+DeviceResource::DeviceResource()
+    : BareosResource()
+    , media_type(nullptr)
+    , device_name(nullptr)
+    , device_options(nullptr)
+    , diag_device_name(nullptr)
+    , changer_name(nullptr)
+    , changer_command(nullptr)
+    , alert_command(nullptr)
+    , spool_directory(nullptr)
+    , dev_type(B_UNKNOWN_DEV)
+    , label_type(B_BAREOS_LABEL)
+    , autoselect(true)
+    , norewindonclose(true)
+    , drive_tapealert_enabled(false)
+    , drive_crypto_enabled(false)
+    , query_crypto_status(false)
+    , collectstats(false)
+    , eof_on_error_is_eot(false)
+    , drive(-1)
+    , drive_index(-1)
+    , cap_bits{0}
+    , max_changer_wait(300)
+    , max_rewind_wait(300)
+    , max_open_wait(300)
+    , max_open_vols(1)
+    , label_block_size(64512)
+    , min_block_size(0)
+    , max_block_size(0)
+    , max_network_buffer_size(0)
+    , max_concurrent_jobs(0)
+    , autodeflate_algorithm(0)
+    , autodeflate_level(6)
+    , autodeflate(0)
+    , autoinflate(0)
+    , vol_poll_interval(300)
+    , max_volume_size(0)
+    , max_file_size(1000000000)
+    , volume_capacity(0)
+    , max_spool_size(0)
+    , max_job_spool_size(0)
+
+    , max_part_size(0)
+    , mount_point(nullptr)
+    , mount_command(nullptr)
+    , unmount_command(nullptr)
+    , write_part_command(nullptr)
+    , free_space_command(nullptr)
+    , count(1)
+    , multiplied_device_resource(nullptr)
+
+    , dev(nullptr)
+    , changer_res(nullptr)
+{
+  return;
+}
+
+DeviceResource::DeviceResource(const DeviceResource& other)
+    : BareosResource(other)
+    , media_type(nullptr)
+    , device_name(nullptr)
+    , device_options(nullptr)
+    , diag_device_name(nullptr)
+    , changer_name(nullptr)
+    , changer_command(nullptr)
+    , alert_command(nullptr)
+    , spool_directory(nullptr)
+    , mount_point(nullptr)
+    , mount_command(nullptr)
+    , unmount_command(nullptr)
+    , write_part_command(nullptr)
+    , free_space_command(nullptr)
+{
+  if (other.media_type) { media_type = bstrdup(other.media_type); }
+  if (other.device_name) { device_name = bstrdup(other.device_name); }
+  if (other.device_options) { device_options = bstrdup(other.device_options); }
+  if (other.diag_device_name) { diag_device_name = bstrdup(other.diag_device_name); }
+  if (other.changer_name) { changer_name = bstrdup(other.changer_name); }
+  if (other.changer_command) { changer_command = bstrdup(other.changer_command); }
+  if (other.alert_command) { alert_command = bstrdup(other.alert_command); }
+  if (other.spool_directory) { spool_directory = bstrdup(other.spool_directory); }
+  dev_type                = other.dev_type;
+  label_type              = other.label_type;
+  autoselect              = other.autoselect;
+  norewindonclose         = other.norewindonclose;
+  drive_tapealert_enabled = other.drive_tapealert_enabled;
+  drive_crypto_enabled    = other.drive_crypto_enabled;
+  query_crypto_status     = other.query_crypto_status;
+  collectstats            = other.collectstats;
+  eof_on_error_is_eot     = other.eof_on_error_is_eot;
+  drive                   = other.drive;
+  drive_index             = other.drive_index;
+  memcpy(cap_bits, other.cap_bits, CAP_BYTES);
+  max_changer_wait        = other.max_changer_wait;
+  max_rewind_wait         = other.max_rewind_wait;
+  max_open_wait           = other.max_open_wait;
+  max_open_vols           = other.max_open_vols;
+  label_block_size        = other.label_block_size;
+  min_block_size          = other.min_block_size;
+  max_block_size          = other.max_block_size;
+  max_network_buffer_size = other.max_network_buffer_size;
+  max_concurrent_jobs     = other.max_concurrent_jobs;
+  autodeflate_algorithm   = other.autodeflate_algorithm;
+  autodeflate_level       = other.autodeflate_level;
+  autodeflate             = other.autodeflate;
+  autoinflate             = other.autoinflate;
+  vol_poll_interval       = other.vol_poll_interval;
+  max_volume_size         = other.max_volume_size;
+  max_file_size           = other.max_file_size;
+  volume_capacity         = other.volume_capacity;
+  max_spool_size          = other.max_spool_size;
+  max_job_spool_size      = other.max_job_spool_size;
+
+  max_part_size = other.max_part_size;
+  if (other.mount_point) { mount_point = bstrdup(other.mount_point); }
+  if (other.mount_command) { mount_command = bstrdup(other.mount_command); }
+  if (other.unmount_command) { unmount_command = bstrdup(other.unmount_command); }
+  if (other.write_part_command) { write_part_command = bstrdup(other.write_part_command); }
+  if (other.free_space_command) { free_space_command = bstrdup(other.free_space_command); }
+  count                      = other.count;
+  multiplied_device_resource = other.multiplied_device_resource;
+
+  dev         = other.dev;
+  changer_res = other.changer_res;
+}
+
+DeviceResource &DeviceResource::operator=(const DeviceResource &rhs)
+{
+  BareosResource::operator=(rhs);
+  media_type              = rhs.media_type;
+  device_name             = rhs.device_name;
+  device_options          = rhs.device_options;
+  diag_device_name        = rhs.diag_device_name;
+  changer_name            = rhs.changer_name;
+  changer_command         = rhs.changer_command;
+  alert_command           = rhs.alert_command;
+  spool_directory         = rhs.spool_directory;
+  dev_type                = rhs.dev_type;
+  label_type              = rhs.label_type;
+  autoselect              = rhs.autoselect;
+  norewindonclose         = rhs.norewindonclose;
+  drive_tapealert_enabled = rhs.drive_tapealert_enabled;
+  drive_crypto_enabled    = rhs.drive_crypto_enabled;
+  query_crypto_status     = rhs.query_crypto_status;
+  collectstats            = rhs.collectstats;
+  eof_on_error_is_eot     = rhs.eof_on_error_is_eot;
+  drive                   = rhs.drive;
+  drive_index             = rhs.drive_index;
+  memcpy(cap_bits, rhs.cap_bits, CAP_BYTES);
+  max_changer_wait        = rhs.max_changer_wait;
+  max_rewind_wait         = rhs.max_rewind_wait;
+  max_open_wait           = rhs.max_open_wait;
+  max_open_vols           = rhs.max_open_vols;
+  label_block_size        = rhs.label_block_size;
+  min_block_size          = rhs.min_block_size;
+  max_block_size          = rhs.max_block_size;
+  max_network_buffer_size = rhs.max_network_buffer_size;
+  max_concurrent_jobs     = rhs.max_concurrent_jobs;
+  autodeflate_algorithm   = rhs.autodeflate_algorithm;
+  autodeflate_level       = rhs.autodeflate_level;
+  autodeflate             = rhs.autodeflate;
+  autoinflate             = rhs.autoinflate;
+  vol_poll_interval       = rhs.vol_poll_interval;
+  max_volume_size         = rhs.max_volume_size;
+  max_file_size           = rhs.max_file_size;
+  volume_capacity         = rhs.volume_capacity;
+  max_spool_size          = rhs.max_spool_size;
+  max_job_spool_size      = rhs.max_job_spool_size;
+
+  max_part_size              = rhs.max_part_size;
+  mount_point                = rhs.mount_point;
+  mount_command              = rhs.mount_command;
+  unmount_command            = rhs.unmount_command;
+  write_part_command         = rhs.write_part_command;
+  free_space_command         = rhs.free_space_command;
+  count                      = rhs.count;
+  multiplied_device_resource = rhs.multiplied_device_resource;
+
+  dev         = rhs.dev;
+  changer_res = rhs.changer_res;
+
+  return *this;
+}
+
+/* clang-format off */
 
 /**
  * Globals for the Storage daemon.
@@ -263,6 +445,9 @@ static ResourceItem dev_items[] = {
     {"EofOnErrorIsEot", CFG_TYPE_BOOL, ITEM(res_dev.eof_on_error_is_eot), 0, CFG_ITEM_DEFAULT, NULL, "18.2.4-",
      "If Yes, Bareos will treat any read error at an end-of-file mark as end-of-tape. You should only set "
      "this option if your tape-drive fails to detect end-of-tape while reading."},
+  {"Count", CFG_TYPE_PINT32, ITEM(res_dev.count), 0, CFG_ITEM_DEFAULT, "1", NULL, "If Count is set to (1 < Count < 10000), "
+  "this resource will be multiplied Count times. The names of multiplied resources will have a serial number (0001, 0002, ...) attached. "
+  "If set to 1 only this single resource will be used and then its name will not be altered."},
     {NULL, 0, {0}, 0, 0, NULL, NULL, NULL}};
 
 /**
@@ -296,7 +481,8 @@ static ResourceTable resources[] = {
     {"Ndmp", ndmp_items, R_NDMP, sizeof(NdmpResource)},
     {"Storage", store_items, R_STORAGE, sizeof(StorageResource),
      [](void *res) { return new ((StorageResource *)res) StorageResource(); }},
-    {"Device", dev_items, R_DEVICE, sizeof(DeviceResource)},
+    {"Device", dev_items, R_DEVICE, sizeof(DeviceResource),
+     [](void *res) { return new ((DeviceResource *)res) DeviceResource(); }},
     {"Messages", msgs_items, R_MSGS, sizeof(MessagesResource)},
     {"Autochanger", changer_items, R_AUTOCHANGER, sizeof(AutochangerResource)},
     {NULL, NULL, 0}};
@@ -525,16 +711,75 @@ static void ParseConfigCb(LEX *lc, ResourceItem *item, int index, int pass)
   }
 }
 
-static void ConfigReadyCallback(ConfigurationParser &my_config)
+static void CreateAndAssignSerialNumber(DeviceResource& device_resource,
+                                        const std::string& basename,
+                                        uint16_t number)
 {
-  std::map<int, std::string> map{{R_DIRECTOR, "R_DIRECTOR"},
-                                 {R_JOB, "R_JOB"}, /* needed for client name conversion */
-                                 {R_NDMP, "R_NDMP"},
-                                 {R_STORAGE, "R_STORAGE"},
-                                 {R_MSGS, "R_MSGS"},
-                                 {R_DEVICE, "R_DEVICE"},
-                                 {R_AUTOCHANGER, "R_AUTOCHANGER"}};
+  std::string tmp_name = basename;
+  char b[5];
+  ::sprintf(b, "%04d", number < 10000 ? number : 9999);
+  tmp_name += b;
+  free(device_resource.hdr.name);
+  device_resource.hdr.name = bstrdup(tmp_name.c_str());
+}
+
+static void MultiplyDevice(DeviceResource& multiplied_device_resource)
+{
+  /* append 0001 to the name of the existing resource */
+  std::string basename(multiplied_device_resource.name());
+  CreateAndAssignSerialNumber(multiplied_device_resource, basename, 1);
+
+  multiplied_device_resource.multiplied_device_resource =
+      std::addressof(multiplied_device_resource);
+
+  auto count = multiplied_device_resource.count - 1;
+
+  /* create the copied devices */
+  for (uint32_t i = 0; i < count; i++) {
+    DeviceResource* copied_device_resource =
+        new DeviceResource(multiplied_device_resource);
+
+    /* append 0002, 0003, ... */
+    CreateAndAssignSerialNumber(*copied_device_resource, basename, i + 2);
+
+    copied_device_resource->multiplied_device_resource =
+        std::addressof(multiplied_device_resource);
+    copied_device_resource->count = 0;
+
+    AppendToResourcesChain(
+        reinterpret_cast<UnionOfResources*>(copied_device_resource),
+        copied_device_resource->hdr.rcode);
+
+    if (copied_device_resource->changer_res) {
+      if (copied_device_resource->changer_res->device) {
+        copied_device_resource->changer_res->device->append(
+            copied_device_resource);
+      }
+    }
+  }
+}
+
+static void MultiplyConfiguredDevices(ConfigurationParser& my_config)
+{
+  CommonResourceHeader* p = nullptr;
+  while ((p = my_config.GetNextRes(R_DEVICE, p))) {
+    DeviceResource* d = reinterpret_cast<DeviceResource*>(p);
+    if (d && d->count > 1) { MultiplyDevice(*d); }
+  }
+}
+
+static void ConfigReadyCallback(ConfigurationParser& my_config)
+{
+  std::map<int, std::string> map{
+      {R_DIRECTOR, "R_DIRECTOR"},
+      {R_JOB, "R_JOB"}, /* needed for client name conversion */
+      {R_NDMP, "R_NDMP"},
+      {R_STORAGE, "R_STORAGE"},
+      {R_MSGS, "R_MSGS"},
+      {R_DEVICE, "R_DEVICE"},
+      {R_AUTOCHANGER, "R_AUTOCHANGER"}};
   my_config.InitializeQualifiedResourceNameTypeConverter(map);
+  MultiplyConfiguredDevices(my_config);
 }
 
 ConfigurationParser *InitSdConfig(const char *configfile, int exit_code)
@@ -646,8 +891,35 @@ static void DumpResource(int type,
   sendit(sock, "%s", buf.c_str());
 
   if (recurse && res->res_dir.hdr.next) {
-    my_config->DumpResourceCb_(type, (CommonResourceHeader *)res->res_dir.hdr.next, sendit, sock, hide_sensitive_data,
-                 verbose);
+    my_config->DumpResourceCb_(type,
+                               (CommonResourceHeader*)res->res_dir.hdr.next,
+                               sendit, sock, hide_sensitive_data, verbose);
+  }
+}
+
+static void AppendToResourcesChain(UnionOfResources* new_resource, int type)
+{
+  int rindex = type - R_FIRST;
+
+  if (!res_head[rindex]) {
+    /* store first entry */
+    res_head[rindex] = (CommonResourceHeader*)new_resource;
+  } else {
+    /* Add new resource to end of chain */
+    CommonResourceHeader *next, *last;
+    for (last = next = res_head[rindex]; next; next = next->next) {
+      last = next;
+      if (bstrcmp(next->name, new_resource->res_dir.name())) {
+        Emsg2(M_ERROR_TERM, 0,
+              _("Attempt to define second \"%s\" resource named \"%s\" is "
+                "not permitted.\n"),
+              resources[rindex].name, new_resource->res_dir.name());
+        return;
+      }
+    }
+    last->next = (CommonResourceHeader*)new_resource;
+    Dmsg2(90, "Inserting %s new_resource: %s\n", my_config->res_to_str(type),
+          new_resource->res_dir.name());
   }
 }
 
@@ -658,7 +930,6 @@ static void DumpResource(int type,
  */
 static bool SaveResource(int type, ResourceItem *items, int pass)
 {
-  UnionOfResources *res;
   int rindex = type - R_FIRST;
   int i;
   int error = 0;
@@ -688,8 +959,8 @@ static bool SaveResource(int type, ResourceItem *items, int pass)
    * record.
    */
   if (pass == 2) {
+    UnionOfResources* res = nullptr;
     DeviceResource *dev = nullptr;
-    int errstat;
 
     switch (type) {
       case R_DEVICE:
@@ -739,6 +1010,7 @@ static bool SaveResource(int type, ResourceItem *items, int pass)
             dev->changer_res = (AutochangerResource *)&res->res_changer;
           }
 
+          int errstat;
           if ((errstat = RwlInit(&res->res_changer.changer_lock, PRIO_SD_ACH_ACCESS)) != 0) {
             BErrNo be;
             Jmsg1(NULL, M_ERROR_TERM, 0, _("Unable to init lock: ERR=%s\n"), be.bstrerror(errstat));
@@ -764,30 +1036,21 @@ static bool SaveResource(int type, ResourceItem *items, int pass)
     return (error == 0);
   }
 
-  /*
-   * Common
-   */
   if (!error) {
-    res = (UnionOfResources *)malloc(resources[rindex].size);
-    memcpy(res, &res_all, resources[rindex].size);
-    if (!res_head[rindex]) {
-      res_head[rindex] = (CommonResourceHeader *)res; /* store first entry */
-    } else {
-      CommonResourceHeader *next, *last;
-      /*
-       * Add new res to end of chain
-       */
-      for (last = next = res_head[rindex]; next; next = next->next) {
-        last = next;
-        if (bstrcmp(next->name, res->res_dir.name())) {
-          Emsg2(M_ERROR_TERM, 0,
-                _("Attempt to define second \"%s\" resource named \"%s\" is not permitted.\n"),
-                resources[rindex].name, res->res_dir.name());
-        }
+    UnionOfResources* new_resource;
+    switch (resources[rindex].rcode) {
+      case R_DEVICE: {
+        DeviceResource* p = new DeviceResource();
+        *p = res_all.res_dev;
+        new_resource = reinterpret_cast<UnionOfResources*>(p);
+        break;
       }
-      last->next = (CommonResourceHeader *)res;
-      Dmsg2(90, "Inserting %s res: %s\n", my_config->res_to_str(type), res->res_dir.name());
+      default:
+        new_resource = (UnionOfResources*)malloc(resources[rindex].size);
+        memcpy(new_resource, &res_all, resources[rindex].size);
+        break;
     }
+    AppendToResourcesChain(new_resource, type);
   }
   return (error == 0);
 }
@@ -812,6 +1075,8 @@ static void FreeResource(CommonResourceHeader *sres, int type)
   nres = (CommonResourceHeader *)res->res_dir.hdr.next;
   if (res->res_dir.hdr.name) { free(res->res_dir.hdr.name); }
   if (res->res_dir.hdr.desc) { free(res->res_dir.hdr.desc); }
+
+  bool resource_uses_smalloc_memory = true;
 
   switch (type) {
     case R_DIRECTOR:
@@ -869,6 +1134,7 @@ static void FreeResource(CommonResourceHeader *sres, int type)
       if (res->res_store.tls_cert_.pem_message_) { delete res->res_store.tls_cert_.pem_message_; }
       break;
     case R_DEVICE:
+      resource_uses_smalloc_memory = false;
       if (res->res_dev.media_type) { free(res->res_dev.media_type); }
       if (res->res_dev.device_name) { free(res->res_dev.device_name); }
       if (res->res_dev.device_options) { free(res->res_dev.device_options); }
@@ -894,10 +1160,18 @@ static void FreeResource(CommonResourceHeader *sres, int type)
       Dmsg1(0, _("Unknown resource type %d\n"), type);
       break;
   }
-  /*
-   * Common stuff again -- free the resource, recurse to next one
-   */
-  if (res) { free(res); }
+    /*
+     * Common stuff again -- free the resource, recurse to next one
+     */
+#ifdef SMARTALLOC
+  if (resource_uses_smalloc_memory) {
+    if (res) { free(res); }
+  } else {
+    delete res;
+  }
+#else
+#error "Check free of resource memory"
+#endif
   if (nres) { my_config->FreeResourceCb_(nres, type); }
 }
 

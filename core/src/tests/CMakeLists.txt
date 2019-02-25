@@ -145,6 +145,23 @@ add_dependencies(check test_connection_setup)
 
 
 
+####### test_stored_multiplied_device ###############################
+add_executable(test_stored_multiplied_device
+  multiplied_device_test.cc
+)
+
+target_link_libraries(test_stored_multiplied_device ${LINK_LIBRARIES})
+
+add_test(NAME test_stored_multiplied_device COMMAND test_stored_multiplied_device)
+
+set_property(TEST test_stored_multiplied_device
+   PROPERTY ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/src/lib:${CMAKE_BINARY_DIR}/src/stored:${CMAKE_BINARY_DIR}/src/cats:${CMAKE_BINARY_DIR}/src/findlib:${CMAKE_BINARY_DIR}/src/lmdb:${CMAKE_BINARY_DIR}/src/ndmp"
+   PROPERTY ENVIRONMENT "GTEST_COLOR=yes"
+   )
+
+add_dependencies(check test_stored_multiplied_device)
+
+
 ####### test_ndmp_address_translate ###############################
 add_executable(test_ndmp_address_translate
   ndmp_address_translate_test.cc
@@ -161,7 +178,4 @@ set_property(TEST test_ndmp_address_translate
    )
 
 add_dependencies(check test_ndmp_address_translate)
-
-
-
 
