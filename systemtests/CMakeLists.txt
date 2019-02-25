@@ -157,8 +157,10 @@ endforeach()
 
 set(tests_dir ${PROJECT_BINARY_DIR}/tests)
 set(SYSTEM_TESTS
+  multiplied-device-test
   backup-bareos-test
-  backup-bareos-test2)
+  backup-bareos-test2
+)
 
 set(BASEPORT 42001)
 
@@ -218,7 +220,7 @@ foreach(TEST_NAME ${SYSTEM_TESTS})
 
   ConfigureFilesToSystemtest("systemtests"  "tests/${TEST_NAME}" "*" @ONLY)
   configure_file("environment.in" "tests/${TEST_NAME}/environment" @ONLY)
-  add_test(NAME ${TEST_NAME}
+  add_test(NAME "system:${TEST_NAME}"
     COMMAND ${tests_dir}/${TEST_NAME}/testrunner
     WORKING_DIRECTORY ${tests_dir}/${TEST_NAME})
   math(EXPR BASEPORT "${BASEPORT} + 10")
