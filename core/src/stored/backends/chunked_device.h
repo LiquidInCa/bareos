@@ -28,6 +28,8 @@
 #ifndef BAREOS_STORED_BACKENDS_CHUNKED_DEVICE_H_
 #define BAREOS_STORED_BACKENDS_CHUNKED_DEVICE_H_
 
+class alist;
+
 namespace storagedaemon {
 
 /*

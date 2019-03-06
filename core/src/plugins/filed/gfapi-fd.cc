@@ -28,6 +28,7 @@
 #include "fd_common.h"
 #include "include/fileopts.h"
 #include "lib/path_list.h"
+#include "lib/berrno.h"
 #include "lib/edit.h"
 
 #include <api/glfs.h>

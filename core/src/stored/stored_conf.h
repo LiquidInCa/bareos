@@ -29,6 +29,11 @@
 #define BAREOS_STORED_STORED_CONF_H_ 1
 
 #include "stored/dev.h"
+#include "lib/messages_resource.h"
+#include "lib/tls_conf.h"
+
+class alist;
+class dlist;
 
 namespace storagedaemon {
 
