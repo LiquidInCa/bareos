@@ -26,6 +26,8 @@
  * Ordered Circular buffer used for producer/consumer problem with pthread.
  */
 
+class dlist;
+
 #define OQSIZE 10 /* # of pointers in the queue */
 
 enum oc_peek_types

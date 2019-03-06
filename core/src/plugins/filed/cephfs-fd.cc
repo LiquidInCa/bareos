@@ -27,6 +27,7 @@
 #include "filed/fd_plugins.h"
 #include "fd_common.h"
 #include "include/fileopts.h"
+#include "lib/berrno.h"
 #include "lib/path_list.h"
 
 #include <dirent.h>

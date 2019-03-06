@@ -34,6 +34,11 @@
 #include "stored/stored.h"
 #include "stored/stored_globals.h"
 #include "stored/sd_backends.h"
+#include "lib/address_conf.h"
+#include "lib/berrno.h"
+#include "lib/resource_item.h"
+#include "lib/parse_conf.h"
+#include "lib/output_formatter.h"
 
 namespace storagedaemon {
 

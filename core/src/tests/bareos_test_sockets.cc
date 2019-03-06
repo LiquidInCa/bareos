@@ -24,6 +24,7 @@
 
 #include "gtest/gtest.h"
 #include "include/bareos.h"
+#include "lib/bsock_tcp.h"
 
 int listening_server_port_number = BSOCK_TEST_PORT_NUMBER;
 
