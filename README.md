@@ -3,6 +3,7 @@
 
 [![Build Status](https://travis-ci.org/bareos/bareos.png?branch=master)](https://travis-ci.org/bareos/bareos/branches)
 [![Build Status](https://saucelabs.com/buildstatus/bareossaucelabs)](https://saucelabs.com/u/bareossaucelabs)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FLiquidInCa%2Fbareos.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FLiquidInCa%2Fbareos?ref=badge_shield)
 
 
 ### Bareos
@@ -55,3 +56,7 @@ The Bareos project offers two mailing lists: bareos-users and bareos-devel.
 ### WebUI Automatic Testing Matrix
 
 [![Build Status](https://saucelabs.com/browser-matrix/bareossaucelabs.svg)](https://saucelabs.com/u/bareossaucelabs)
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FLiquidInCa%2Fbareos.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2FLiquidInCa%2Fbareos?ref=badge_large)
